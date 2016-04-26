@@ -39,6 +39,8 @@
 #include "hwc_ad.h"
 #include "profiler.h"
 #include "hwc_virtual.h"
+#include <cutils/properties.h>
+
 
 using namespace qhwc;
 using namespace overlay;
@@ -69,6 +71,13 @@ hwc_module_t HAL_MODULE_INFO_SYM = {
         reserved: {0},
     }
 };
+
+static bool isInVRMode(){
+        char value[PROPERTY_VALUE_MAX];
+        property_get("sf.vrmode", value, "0");
+        ALOGD("sf.vrmode: %s",value);
+        return (atoi(value) > 0)?true:false;
+}
 
 /* In case of non-hybrid WFD session, we are fooling SF by piggybacking on
  * HDMI display ID for virtual. This helper is needed to differentiate their
@@ -587,6 +596,37 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         hwc_layer_1_t *fbLayer = &list->hwLayers[last];
         int fd = -1; //FenceFD from the Copybit(valid in async mode)
         bool copybitDone = false;
+
+	
+	//in VR mode 
+        hwc_layer_1_t *VRLayer = &list->hwLayers[0];
+        private_handle_t *VRhnd = NULL ;
+	
+	if(VRLayer)
+		VRhnd=(private_handle_t *)VRLayer->handle;
+
+	
+
+	if(  VRhnd && isInVRMode()) {
+        	char value[PROPERTY_VALUE_MAX];
+		property_get("vr.updown", value, "0");
+		
+		int upDownScr= atoi(value) ;
+		
+	    if (upDownScr){
+		
+	    	VRhnd->offset = VRhnd->size >>  1 ;
+		ALOGD("----- post down,%d",VRhnd->offset); 
+	    }
+	    else {
+	    	VRhnd->offset = 0;
+		ALOGD("----- post up,0");
+	    }
+
+	} else {
+		VRhnd->offset=0; 
+	}
+
         if(ctx->mCopyBit[dpy])
             copybitDone = ctx->mCopyBit[dpy]->draw(ctx, list, dpy, &fd);
         if(list->numHwLayers > 1)
@@ -604,16 +644,17 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         //TODO We dont check for SKIP flag on this layer because we need PAN
         //always. Last layer is always FB
         private_handle_t *hnd = (private_handle_t *)fbLayer->handle;
-        if(copybitDone && ctx->mMDP.version >= qdutils::MDP_V4_0) {
+        
+	if(copybitDone && ctx->mMDP.version >= qdutils::MDP_V4_0) {
             hnd = ctx->mCopyBit[dpy]->getCurrentRenderBuffer();
         }
-
+	
         if(hnd) {
             if (!ctx->mFBUpdate[dpy]->draw(ctx, hnd)) {
                 ALOGE("%s: FBUpdate draw failed", __FUNCTION__);
                 ret = -1;
             }else{
-		//ALOGD("%s:FBUpdate",__FUNCTION__);
+		ALOGD("%s:FBUpdate [handle]:%p [offset]:0x%x,%p, size[%d]",__FUNCTION__,hnd,hnd->offset,hnd->base,hnd->size);
 		}
         }
 
@@ -634,7 +675,7 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             ALOGE("%s: display commit fail for %d dpy!", __FUNCTION__, dpy);
             ret = -1;
         }else{
-		//ALOGD("%s:overlay commit",__FUNCTION__);
+		ALOGD("%s:overlay commit",__FUNCTION__);
 	}
 
     }

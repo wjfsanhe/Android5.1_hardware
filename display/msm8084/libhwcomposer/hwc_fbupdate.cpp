@@ -27,6 +27,7 @@
 #include "mdp_version.h"
 #include "external.h"
 #include "virtual.h"
+#include <cutils/properties.h>
 
 using namespace qdutils;
 using namespace overlay;
@@ -36,6 +37,14 @@ using namespace overlay::utils;
 namespace qhwc {
 
 namespace ovutils = overlay::utils;
+
+
+static bool isInVRMode(){
+        char value[PROPERTY_VALUE_MAX];
+        property_get("sf.vrmode", value, "0");
+        ALOGD("sf.vrmode: %s",value);
+        return (atoi(value) > 0)?true:false;
+}
 
 IFBUpdate* IFBUpdate::getObject(hwc_context_t *ctx, const int& dpy) {
     if(qdutils::MDPVersion::getInstance().isSrcSplit()) {
@@ -229,6 +238,7 @@ bool FBUpdateNonSplit::configure(hwc_context_t *ctx, hwc_display_contents_1 *lis
 
 bool FBUpdateNonSplit::draw(hwc_context_t *ctx, private_handle_t *hnd)
 {
+    
     if(!mModeOn) {
         return true;
     }
@@ -389,11 +399,13 @@ bool FBUpdateSplit::configure(hwc_context_t *ctx,
 
 bool FBUpdateSplit::draw(hwc_context_t *ctx, private_handle_t *hnd)
 {
+
     if(!mModeOn) {
         return true;
     }
     bool ret = true;
     overlay::Overlay& ov = *(ctx->mOverlay);
+    ALOGD("----- fbupdate: %d", hnd->offset);
     if(mDestLeft != ovutils::OV_INVALID) {
         if (!ov.queueBuffer(hnd->fd, (uint32_t)hnd->offset, mDestLeft)) {
             ALOGE("%s: queue failed for left of dpy = %d",

@@ -1878,6 +1878,12 @@ int MDPCompSplit::configure(hwc_context_t *ctx, hwc_layer_1_t *layer,
                             rDest, &PipeLayerPair.rot);
 }
 
+static bool isInVRMode(){
+        char value[PROPERTY_VALUE_MAX];
+        property_get("sf.vrmode", value, "0");
+        ALOGD("sf.vrmode: %s",value);
+        return (atoi(value) > 0)?true:false;
+}
 bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
     if(!isEnabled()) {
@@ -1904,7 +1910,7 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
     LayerProp *layerProp = ctx->layerProp[mDpy];
 
     int numHwLayers = ctx->listStats[mDpy].numAppLayers;  
-    ALOGD("MDP got  %d ov layer request",numHwLayers);
+    ALOGD("\n\nMDP got  %d ov layer request, mdpCount=%d",numHwLayers,mCurrentFrame.mdpCount);
     for(int i = 0; i < numHwLayers && mCurrentFrame.mdpCount; i++ )
     {
         if(mCurrentFrame.isFBComposed[i]) continue;
@@ -1915,10 +1921,17 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             ALOGE("%s handle null", __FUNCTION__);
             return false;
         }
+	if (!isInVRMode()){
+			
+
+	
 
         if(!(layerProp[i].mFlags & HWC_MDPCOMP)) {
+	    ALOGD("layerProp[i].mFlags & HWC_MDPCOMP =%d",layerProp[i].mFlags & HWC_MDPCOMP) ;
+	    	    
             continue;
         }
+	}
 
         int mdpIndex = mCurrentFrame.layerToMDP[i];
 
@@ -1931,7 +1944,7 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             ovutils::eDest indexR = pipe_info.rIndex;
             int fd = hnd->fd;
             uint32_t offset = (uint32_t)hnd->offset;
-	    ALOGD("[fd - offset][%d- 0x%x]",fd,offset);	
+	    ALOGD("[fd - offset - size][%d- 0x%x - %d]",fd,offset,hnd->size);	
             if(rot) {
 		ALOGD("rotate enable");
                 rot->queueBuffer(fd, offset);
@@ -1940,7 +1953,7 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             }
             if(indexL != ovutils::OV_INVALID) {
                 ovutils::eDest destL = (ovutils::eDest)indexL;
-                ALOGD_IF(isDebug(),"%s: MDP Comp: Drawing layer: %p hnd: %p \
+                ALOGD_IF(1,"%s: MDP Comp: Drawing layer: %p hnd: %p \
                         using  pipe: %d", __FUNCTION__, layer, hnd, indexL );
                 if (!ov.queueBuffer(fd, offset, destL)) {
                     ALOGE("%s: queueBuffer failed for display:%d",
@@ -1951,7 +1964,7 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
             if(indexR != ovutils::OV_INVALID) {
                 ovutils::eDest destR = (ovutils::eDest)indexR;
-                ALOGD_IF(isDebug(),"%s: MDP Comp: Drawing layer: %p hnd: %p \
+                ALOGD_IF(1,"%s: MDP Comp: Drawing layer: %p hnd: %p \
                         using  pipe: %d", __FUNCTION__, layer, hnd, indexR );
                 if (!ov.queueBuffer(fd, offset, destR)) {
                     ALOGE("%s: queueBuffer failed for display:%d",
@@ -1970,15 +1983,17 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
             int fd = hnd->fd;
             int offset = (uint32_t)hnd->offset;
-
+	    ALOGD("----- mdpcom1 : %d",offset); 
             if(ctx->mAD->isModeOn()) {
                 if(ctx->mAD->draw(ctx, fd, offset)) {
                     fd = ctx->mAD->getDstFd();
                     offset = ctx->mAD->getDstOffset();
                 }
             }
-
+	    ALOGD("----- mdpcom2 : %d",offset) ;
+	    ALOGD("[fd - offset - size(/4)][%d- 0x%x - 0x%x(0x%x)]",fd,offset,hnd->size,hnd->size>>2);	
             if(rot) {
+		ALOGD("rotate enable");
                 rot->queueBuffer(fd, offset);
                 fd = rot->getDstMemId();
                 offset = rot->getDstOffset();
@@ -1987,8 +2002,8 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             //************* play left mixer **********
             if(indexL != ovutils::OV_INVALID) {
                 ovutils::eDest destL = (ovutils::eDest)indexL;
-                ALOGD_IF(isDebug(),"%s: MDP Comp: Drawing layer: %p hnd: %p \
-                        using  pipe: %d", __FUNCTION__, layer, hnd, indexL );
+                ALOGD_IF(1,"%s: MDP Comp: Drawing layer: %p hnd: %p,offset:%d \
+                        using  pipe: %d", __FUNCTION__, layer, hnd, offset,indexL );
                 if (!ov.queueBuffer(fd, offset, destL)) {
                     ALOGE("%s: queueBuffer failed for left mixer",
                             __FUNCTION__);
@@ -1999,8 +2014,8 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             //************* play right mixer **********
             if(indexR != ovutils::OV_INVALID) {
                 ovutils::eDest destR = (ovutils::eDest)indexR;
-                ALOGD_IF(isDebug(),"%s: MDP Comp: Drawing layer: %p hnd: %p \
-                        using  pipe: %d", __FUNCTION__, layer, hnd, indexR );
+                ALOGD_IF(1,"%s: MDP Comp: Drawing layer: %p hnd: %p,offset:%d \
+                        using  pipe: %d", __FUNCTION__, layer, hnd, offset,indexR );
                 if (!ov.queueBuffer(fd, offset, destR)) {
                     ALOGE("%s: queueBuffer failed for right mixer",
                             __FUNCTION__);
