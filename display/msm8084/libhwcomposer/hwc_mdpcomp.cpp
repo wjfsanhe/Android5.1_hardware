@@ -1620,20 +1620,21 @@ int MDPCompNonSplit::configure4k2kYuv(hwc_context_t *ctx, hwc_layer_1_t *layer,
 bool MDPCompNonSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
     if(!isEnabled()) {
-        ALOGD_IF(isDebug(),"%s: MDP Comp not configured", __FUNCTION__);
+        ALOGD_IF(isDebug(),"ztw %s: MDP Comp not configured", __FUNCTION__);
         return true;
     }
 
     if(!ctx || !list) {
-        ALOGE("%s: invalid contxt or list",__FUNCTION__);
+        ALOGE("ztw %s: invalid contxt or list",__FUNCTION__);
         return false;
     }
 
     if(ctx->listStats[mDpy].numAppLayers > MAX_NUM_APP_LAYERS) {
-        ALOGD_IF(isDebug(),"%s: Exceeding max layer count", __FUNCTION__);
+        ALOGD_IF(isDebug(),"ztw %s: Exceeding max layer count", __FUNCTION__);
         return true;
     }
 
+ALOGE("ztw%s %d",__func__,__LINE__);
     // Set the Handle timeout to true for MDP or MIXED composition.
     if(idleInvalidator && !sIdleFallBack && mCurrentFrame.mdpCount) {
         sHandleTimeout = true;
@@ -1642,6 +1643,7 @@ bool MDPCompNonSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
     overlay::Overlay& ov = *ctx->mOverlay;
     LayerProp *layerProp = ctx->layerProp[mDpy];
 
+ALOGE("ztw%s %d",__func__,__LINE__);
     int numHwLayers = ctx->listStats[mDpy].numAppLayers;
     for(int i = 0; i < numHwLayers && mCurrentFrame.mdpCount; i++ )
     {
@@ -1661,7 +1663,8 @@ bool MDPCompNonSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
         int mdpIndex = mCurrentFrame.layerToMDP[i];
 
-        if(is4kx2kYuvBuffer(hnd) && sEnable4k2kYUVSplit)
+ALOGE("ztw%s %d",__func__,__LINE__);
+        if( hnd && is4kx2kYuvBuffer(hnd) && sEnable4k2kYUVSplit)
         {
             MdpYUVPipeInfo& pipe_info =
                 *(MdpYUVPipeInfo*)mCurrentFrame.mdpToLayer[mdpIndex].pipeInfo;
@@ -1698,24 +1701,28 @@ bool MDPCompNonSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             }
         }
         else{
+
+ALOGE("ztw%s %d",__func__,__LINE__);
             MdpPipeInfoNonSplit& pipe_info =
             *(MdpPipeInfoNonSplit*)mCurrentFrame.mdpToLayer[mdpIndex].pipeInfo;
             ovutils::eDest dest = pipe_info.index;
             if(dest == ovutils::OV_INVALID) {
-                ALOGE("%s: Invalid pipe index (%d)", __FUNCTION__, dest);
+                ALOGE("ztw %s: Invalid pipe index (%d)", __FUNCTION__, dest);
                 return false;
             }
 
             if(!(layerProp[i].mFlags & HWC_MDPCOMP)) {
-                continue;
+ALOGE("ztw%s %d",__func__,__LINE__);
+               // continue;
             }
 
-            ALOGD_IF(isDebug(),"%s: MDP Comp: Drawing layer: %p hnd: %p \
+            ALOGD_IF(isDebug(),"ztw %s: MDP Comp: Drawing layer: %p hnd: %p \
                     using  pipe: %d", __FUNCTION__, layer,
                     hnd, dest );
 
             int fd = hnd->fd;
             uint32_t offset = (uint32_t)hnd->offset;
+			ALOGE("ztwoffset noSplit  %x",(uint32_t)hnd->offset);
 
             Rotator *rot = mCurrentFrame.mdpToLayer[mdpIndex].rot;
             if(rot) {
@@ -1726,7 +1733,7 @@ bool MDPCompNonSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             }
 
             if (!ov.queueBuffer(fd, offset, dest)) {
-                ALOGE("%s: queueBuffer failed for display:%d ",
+                ALOGE("ztw %s: queueBuffer failed for display:%d ",
                         __FUNCTION__, mDpy);
                 return false;
             }
@@ -1879,21 +1886,22 @@ int MDPCompSplit::configure(hwc_context_t *ctx, hwc_layer_1_t *layer,
 }
 
 bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
-
+    ALOGE("ztw %s %d",__func__,__LINE__);
     if(!isEnabled()) {
         ALOGD_IF(isDebug(),"%s: MDP Comp not configured", __FUNCTION__);
         return true;
     }
 
     if(!ctx || !list) {
-        ALOGE("%s: invalid contxt or list",__FUNCTION__);
+        ALOGE("ztw %s: invalid contxt or list",__FUNCTION__);
         return false;
     }
 
     if(ctx->listStats[mDpy].numAppLayers > MAX_NUM_APP_LAYERS) {
-        ALOGD_IF(isDebug(),"%s: Exceeding max layer count", __FUNCTION__);
+        ALOGD_IF(isDebug(),"ztw %s: Exceeding max layer count", __FUNCTION__);
         return true;
     }
+    ALOGE("ztw %s %d",__func__,__LINE__);
 
     // Set the Handle timeout to true for MDP or MIXED composition.
     if(idleInvalidator && !sIdleFallBack && mCurrentFrame.mdpCount) {
@@ -1903,8 +1911,7 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
     overlay::Overlay& ov = *ctx->mOverlay;
     LayerProp *layerProp = ctx->layerProp[mDpy];
 
-    int numHwLayers = ctx->listStats[mDpy].numAppLayers;  
-    ALOGD("MDP got  %d ov layer request",numHwLayers);
+    int numHwLayers = ctx->listStats[mDpy].numAppLayers;
     for(int i = 0; i < numHwLayers && mCurrentFrame.mdpCount; i++ )
     {
         if(mCurrentFrame.isFBComposed[i]) continue;
@@ -1912,12 +1919,13 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         hwc_layer_1_t *layer = &list->hwLayers[i];
         private_handle_t *hnd = (private_handle_t *)layer->handle;
         if(!hnd) {
-            ALOGE("%s handle null", __FUNCTION__);
+            ALOGE("ztw %s handle null", __FUNCTION__);
             return false;
         }
 
         if(!(layerProp[i].mFlags & HWC_MDPCOMP)) {
-            continue;
+    ALOGE("ztw %s %d",__func__,__LINE__);
+            //continue;
         }
 
         int mdpIndex = mCurrentFrame.layerToMDP[i];
@@ -1930,10 +1938,9 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             ovutils::eDest indexL = pipe_info.lIndex;
             ovutils::eDest indexR = pipe_info.rIndex;
             int fd = hnd->fd;
+			ALOGE("ztwoffset split %x",(uint32_t)hnd->offset);
             uint32_t offset = (uint32_t)hnd->offset;
-	    ALOGD("[fd - offset][%d- 0x%x]",fd,offset);	
             if(rot) {
-		ALOGD("rotate enable");
                 rot->queueBuffer(fd, offset);
                 fd = rot->getDstMemId();
                 offset = rot->getDstOffset();
@@ -1961,6 +1968,10 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             }
         }
         else{
+			
+			ALOGE("ztw  %s %d",__func__,__LINE__);
+			ALOGE("ztwoffset split %x",(uint32_t)hnd->offset);
+
             MdpPipeInfoSplit& pipe_info =
                 *(MdpPipeInfoSplit*)mCurrentFrame.mdpToLayer[mdpIndex].pipeInfo;
             Rotator *rot = mCurrentFrame.mdpToLayer[mdpIndex].rot;
@@ -2010,7 +2021,9 @@ bool MDPCompSplit::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         }
 
         layerProp[i].mFlags &= ~HWC_MDPCOMP;
+			ALOGE("ztw  %s %d",__func__,__LINE__);
     }
+    ALOGE("ztw %s %d",__func__,__LINE__);
 
     return true;
 }

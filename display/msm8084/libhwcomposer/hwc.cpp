@@ -270,16 +270,19 @@ static int hwc_prepare_primary(hwc_composer_device_1 *dev,
     hwc_context_t* ctx = (hwc_context_t*)(dev);
     const int dpy = HWC_DISPLAY_PRIMARY;
     bool fbComp = false;
-    if (LIKELY(list && list->numHwLayers > 1) &&
+    if (LIKELY(list && list->numHwLayers >= 1) &&
             ctx->dpyAttr[dpy].isActive) {
 
         if (ctx->dpyAttr[dpy].customFBSize)
             scaleDisplayFrame(ctx, dpy, list);
-
+		ALOGE("ztw %s %d",__func__,__LINE__);
         reset_layer_prop(ctx, dpy, (int)list->numHwLayers - 1);
+		ALOGE("ztw %s %d",__func__,__LINE__);
         setListStats(ctx, list, dpy);
+		ALOGE("ztw %s %d",__func__,__LINE__);
 
         fbComp = (ctx->mMDPComp[dpy]->prepare(ctx, list) < 0);
+		ALOGE("ztw %s %d",__func__,__LINE__);
 
         if (fbComp) {
             const int fbZ = 0;
@@ -295,8 +298,10 @@ static int hwc_prepare_primary(hwc_composer_device_1 *dev,
 						ctx->mCopyBit[dpy]->prepare(ctx, list, dpy);
 			}
         }
+		ALOGE("ztw %s %d",__func__,__LINE__);
         setGPUHint(ctx, list);
     }
+		ALOGE("ztw %s %d",__func__,__LINE__);
     return 0;
 }
 
@@ -582,6 +587,7 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
     ATRACE_CALL();
     int ret = 0;
     const int dpy = HWC_DISPLAY_PRIMARY;
+
     if (LIKELY(list) && ctx->dpyAttr[dpy].isActive) {
         size_t last = list->numHwLayers - 1;
         hwc_layer_1_t *fbLayer = &list->hwLayers[last];
@@ -596,6 +602,7 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         if(ctx->mHwcDebug[dpy])
             ctx->mHwcDebug[dpy]->dumpLayers(list);
 
+ALOGE("ztw%s %d",__func__,__LINE__);
         if (!ctx->mMDPComp[dpy]->draw(ctx, list)) {
             ALOGE("%s: MDPComp draw failed", __FUNCTION__);
             ret = -1;
@@ -604,6 +611,8 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         //TODO We dont check for SKIP flag on this layer because we need PAN
         //always. Last layer is always FB
         private_handle_t *hnd = (private_handle_t *)fbLayer->handle;
+ALOGE("ztw%s %d  hnd:%p",__func__,__LINE__, hnd);
+ALOGE("ztw%s %d  offset:%d",__func__,__LINE__, hnd->offset);
         if(copybitDone && ctx->mMDP.version >= qdutils::MDP_V4_0) {
             hnd = ctx->mCopyBit[dpy]->getCurrentRenderBuffer();
         }
@@ -612,9 +621,7 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             if (!ctx->mFBUpdate[dpy]->draw(ctx, hnd)) {
                 ALOGE("%s: FBUpdate draw failed", __FUNCTION__);
                 ret = -1;
-            }else{
-		//ALOGD("%s:FBUpdate",__FUNCTION__);
-		}
+            }
         }
 
         int lSplit = getLeftSplit(ctx, dpy);
@@ -633,9 +640,7 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         if(!Overlay::displayCommit(ctx->dpyAttr[dpy].fd, lRoi, rRoi)) {
             ALOGE("%s: display commit fail for %d dpy!", __FUNCTION__, dpy);
             ret = -1;
-        }else{
-		//ALOGD("%s:overlay commit",__FUNCTION__);
-	}
+        }
 
     }
 
@@ -707,6 +712,7 @@ static int hwc_set(hwc_composer_device_1 *dev,
                    hwc_display_contents_1_t** displays)
 {
     int ret = 0;
+ALOGE("ztw%s %d",__func__,__LINE__);
     hwc_context_t* ctx = (hwc_context_t*)(dev);
     for (int i = 0; i < (int)numDisplays; i++) {
         hwc_display_contents_1_t* list = displays[i];
@@ -726,6 +732,7 @@ static int hwc_set(hwc_composer_device_1 *dev,
                 ret = -EINVAL;
         }
     }
+ALOGE("ztw%s %d",__func__,__LINE__);
     // This is only indicative of how many times SurfaceFlinger posts
     // frames to the display.
     CALC_FPS();

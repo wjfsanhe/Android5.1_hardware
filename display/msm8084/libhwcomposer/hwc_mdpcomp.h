@@ -191,7 +191,8 @@ protected:
      * All peculiar HW limitations should go here */
     bool hwLimitationsCheck(hwc_context_t* ctx, hwc_display_contents_1_t* list);
     /* Is debug enabled */
-    static bool isDebug() { return sDebugLogs ? true : false; };
+    //static bool isDebug() { return sDebugLogs ? true : false; };
+    static bool isDebug() { return true; };
     /* Is feature enabled */
     static bool isEnabled() { return sEnabled; };
     /* checks for mdp comp dimension limitation */
